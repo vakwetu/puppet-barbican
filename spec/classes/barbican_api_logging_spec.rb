@@ -1,6 +1,6 @@
 require 'spec_helper'
 
-describe 'barbican::logging' do
+describe 'barbican::api::logging' do
 
   let :params do
     {
@@ -24,10 +24,25 @@ describe 'barbican::logging' do
      :instance_format => '[instance: %(uuid)s] ',
      :instance_uuid_format => '[instance: %(uuid)s] ',
      :log_date_format => '%Y-%m-%d %H:%M:%S',
+     :use_syslog => true,
+     :use_stderr => false,
+     :log_facility => 'LOG_FOO',
+     :log_dir => '/var/log',
+     :verbose => true,
+     :debug => true,
     }
   end
 
-  shared_examples_for 'barbican-logging' do
+  shared_examples_for 'barbican-api-logging' do
+
+    context 'with basic logging options and default settings' do
+      it_configures  'basic default logging settings'
+    end
+
+    context 'with basic logging options and non-default settings' do
+      before { params.merge!( log_params ) }
+      it_configures 'basic non-default logging settings'
+    end
 
     context 'with extended logging options' do
       before { params.merge!( log_params ) }
@@ -38,6 +53,27 @@ describe 'barbican::logging' do
       it_configures 'logging params unset'
     end
 
+  end
+
+  shared_examples 'basic default logging settings' do
+    it 'configures barbican logging settins with default values' do
+      is_expected.to contain_barbican_config('DEFAULT/use_syslog').with(:value => 'false')
+      is_expected.to contain_barbican_config('DEFAULT/use_stderr').with(:value => 'true')
+      is_expected.to contain_barbican_config('DEFAULT/log_dir').with(:value => '/var/log/barbican')
+      is_expected.to contain_barbican_config('DEFAULT/verbose').with(:value => 'false')
+      is_expected.to contain_barbican_config('DEFAULT/debug').with(:value => 'false')
+    end
+  end
+
+  shared_examples 'basic non-default logging settings' do
+    it 'configures barbican logging settins with non-default values' do
+      is_expected.to contain_barbican_config('DEFAULT/use_syslog').with(:value => 'true')
+      is_expected.to contain_barbican_config('DEFAULT/use_stderr').with(:value => 'false')
+      is_expected.to contain_barbican_config('DEFAULT/syslog_log_facility').with(:value => 'LOG_FOO')
+      is_expected.to contain_barbican_config('DEFAULT/log_dir').with(:value => '/var/log')
+      is_expected.to contain_barbican_config('DEFAULT/verbose').with(:value => 'true')
+      is_expected.to contain_barbican_config('DEFAULT/debug').with(:value => 'true')
+    end
   end
 
   shared_examples_for 'logging params set' do
@@ -84,24 +120,24 @@ describe 'barbican::logging' do
      :default_log_levels, :fatal_deprecations,
      :instance_format, :instance_uuid_format,
      :log_date_format, ].each { |param|
-        it { is_expected.to contain_barbican_config("DEFAULT/#{param}").with_value('<SERVICE DEFAULT>') }
+        it { is_expected.to contain_barbican_config("DEFAULT/#{param}").with_ensure('absent') }
       }
   end
 
   context 'on Debian platforms' do
     let :facts do
-      @default_facts.merge({ :osfamily => 'Debian' })
+      { :osfamily => 'Debian' }
     end
 
-    it_configures 'barbican-logging'
+    it_configures 'barbican-api-logging'
   end
 
   context 'on RedHat platforms' do
     let :facts do
-      @default_facts.merge({ :osfamily => 'RedHat' })
+      { :osfamily => 'RedHat' }
     end
 
-    it_configures 'barbican-logging'
+    it_configures 'barbican-api-logging'
   end
 
 end
